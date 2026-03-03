@@ -1,0 +1,8 @@
+.DS_Store
+audit.log
+cert.pem
+key.pem
+data/
+fileserver/
+users.json
+fileserver.py

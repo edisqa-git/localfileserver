@@ -1,0 +1,6 @@
+{
+  "admin": {
+    "password_hash": "replace-with-generate_password_hash-output",
+    "role": "admin"
+  }
+}
