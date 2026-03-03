@@ -1,8 +1,8 @@
 .DS_Store
+__pycache__/
+.venv/
 audit.log
 cert.pem
 key.pem
 data/
-fileserver/
 users.json
-fileserver.py

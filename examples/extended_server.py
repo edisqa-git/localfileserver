@@ -20,13 +20,14 @@ from werkzeug.utils import secure_filename
 # =========================
 # Config
 # =========================
-SHARE_DIR = Path("/Users/iotedimax/share").expanduser().resolve()
+BASE_DIR = Path(__file__).resolve().parent.parent
+SHARE_DIR = Path(os.environ.get("FILESERVER_SHARE_DIR", str(BASE_DIR / "data"))).expanduser().resolve()
 HOST = "0.0.0.0"
 PORT = 8443
 
 # TLS cert/key (self-signed is fine for LAN; still "Not Secure" until trusted)
-CERT_FILE = "cert.pem"
-KEY_FILE = "key.pem"
+CERT_FILE = str((BASE_DIR / "cert.pem").resolve())
+KEY_FILE = str((BASE_DIR / "key.pem").resolve())
 
 # Basic Auth
 AUTH_USER = os.environ.get("FILESERVER_AUTH_USER", "admin")
@@ -50,7 +51,7 @@ ALLOWED_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".txt", ".log", ".pcap", ".pcap
 MAX_CONTENT_LENGTH = 200 * 1024 * 1024  # 200MB
 
 # Audit Log
-AUDIT_LOG = "audit.log"
+AUDIT_LOG = str((BASE_DIR / "audit.log").resolve())
 
 # =========================
 # App init
