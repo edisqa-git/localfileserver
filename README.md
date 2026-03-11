@@ -17,6 +17,24 @@ A small HTTPS file-sharing server for LAN use.
 - Python 3.10+
 - `pip install -r requirements.txt`
 
+## Quick start (initiate project)
+
+Run from repo root:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp users.example.json users.json
+python3 scripts/generate_password_hash.py
+./scripts/run.sh
+```
+
+Then open:
+
+- Frontend app: `https://127.0.0.1:8443/app`
+- Legacy UI: `https://127.0.0.1:8443/`
+
 ## Setup
 
 1. Copy `users.example.json` to `users.json`.
