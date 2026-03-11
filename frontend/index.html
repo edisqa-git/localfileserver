@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LAN File Server App</title>
+  <link rel="stylesheet" href="/app/static/app.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <h1>LAN File Server</h1>
+      <p>Signup, login, and manage files from one interface.</p>
+    </header>
+
+    <section class="panel auth">
+      <div class="auth-grid">
+        <form id="login-form" class="card">
+          <h2>Login</h2>
+          <label for="login-username">Username</label>
+          <input id="login-username" name="username" autocomplete="username" required />
+          <label for="login-password">Password</label>
+          <input id="login-password" name="password" type="password" autocomplete="current-password" required />
+          <button type="submit">Sign In</button>
+        </form>
+
+        <form id="signup-form" class="card">
+          <h2>Create Account</h2>
+          <label for="signup-username">Username</label>
+          <input id="signup-username" name="username" autocomplete="username" required />
+          <label for="signup-password">Password</label>
+          <input id="signup-password" name="password" type="password" autocomplete="new-password" required />
+          <button type="submit">Sign Up</button>
+        </form>
+      </div>
+      <p id="auth-status" class="status"></p>
+    </section>
+
+    <section class="panel app">
+      <div class="toolbar">
+        <h2>Files</h2>
+        <div class="actions">
+          <button id="refresh-btn" type="button">Refresh</button>
+          <button id="logout-btn" type="button">Logout</button>
+        </div>
+      </div>
+
+      <form id="upload-form" class="upload-row">
+        <input id="upload-file" name="file" type="file" required />
+        <button type="submit">Upload</button>
+      </form>
+      <div id="drop-zone" class="drop-zone" aria-label="File drop zone">
+        Drag and drop files here to upload
+      </div>
+
+      <p id="file-status" class="status"></p>
+      <div id="file-list" class="file-list"></div>
+    </section>
+  </main>
+
+  <script src="/app/static/app.js"></script>
+</body>
+</html>

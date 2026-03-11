@@ -11,12 +11,13 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
+
 from flask import (
     Flask, request, send_from_directory, render_template_string,
     jsonify, abort, Response, redirect
 )
 from werkzeug.utils import secure_filename
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 # =========================
 # Paths / Config
@@ -24,6 +25,7 @@ from werkzeug.security import check_password_hash
 BASE_DIR = Path(__file__).parent.resolve()
 DATA_DIR = (BASE_DIR / "data").resolve()
 USERS_DB = (BASE_DIR / "users.json").resolve()
+FRONTEND_DIR = (BASE_DIR / "frontend").resolve()
 
 HOST = "0.0.0.0"
 PORT = 8443
@@ -114,12 +116,35 @@ def load_users():
     with open(USERS_DB, "r", encoding="utf-8") as f:
         return json.load(f)
 
+def save_users(users: dict):
+    payload = json.dumps(users, ensure_ascii=False, indent=2, sort_keys=True).encode("utf-8")
+    atomic_write(USERS_DB, payload)
+
 def authenticate(username: str, password: str) -> bool:
     users = load_users()
     user = users.get(username)
     if not user:
         return False
     return check_password_hash(user.get("password_hash", ""), password)
+
+def create_user(username: str, password: str):
+    clean_username = (username or "").strip()
+    if not clean_username:
+        abort(400, description="Username is required")
+    if len(clean_username) < 3 or len(clean_username) > 64:
+        abort(400, description="Username length must be 3-64")
+    if ":" in clean_username:
+        abort(400, description="Username cannot contain ':'")
+    if not password or len(password) < 8:
+        abort(400, description="Password length must be at least 8")
+
+    users = load_users()
+    if clean_username in users:
+        abort(409, description="Username already exists")
+
+    users[clean_username] = {"password_hash": generate_password_hash(password)}
+    save_users(users)
+    return clean_username
 
 def check_basic_auth() -> bool:
     auth = request.authorization
@@ -383,6 +408,33 @@ def delete_ui(filename):
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"ok": True, "time": datetime.utcnow().isoformat() + "Z"}), 200
+
+@app.route("/app", methods=["GET"])
+def frontend_app():
+    return send_from_directory(str(FRONTEND_DIR), "index.html")
+
+@app.route("/app/static/<path:filename>", methods=["GET"])
+def frontend_static(filename):
+    return send_from_directory(str(FRONTEND_DIR), filename)
+
+@app.route("/api/files", methods=["GET"])
+def api_files():
+    auth_resp = require_auth()
+    if auth_resp:
+        return auth_resp
+    return jsonify({"files": list_files()}), 200
+
+@app.route("/signup", methods=["POST"])
+def signup():
+    ip = client_ip()
+    if not ip_allowed(ip):
+        abort(403, description="Forbidden (IP not allowed)")
+
+    payload = request.get_json(silent=True) or {}
+    username = payload.get("username", "")
+    password = payload.get("password", "")
+    created = create_user(username, password)
+    return jsonify({"status": "created", "user": created}), 201
 
 @app.route("/whoami", methods=["GET"])
 def whoami():

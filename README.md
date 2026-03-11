@@ -5,6 +5,7 @@ A small HTTPS file-sharing server for LAN use.
 ## Project structure
 
 - `server.py`: main server with `users.json` password-hash auth, CIDR allowlisting, TLS auto-generation, and upload/download UI.
+- `frontend/`: browser app served by `server.py` at `/app` (signup, login, list/upload/download/delete).
 - `examples/extended_server.py`: simpler alternate server that uses environment-based basic auth.
 - `scripts/run.sh`: starts the main server from the repo root.
 - `scripts/generate_password_hash.py`: interactive helper for generating a `users.json` password hash.
@@ -22,8 +23,17 @@ A small HTTPS file-sharing server for LAN use.
 2. Generate a password hash with `python3 scripts/generate_password_hash.py`.
 3. Replace the example password hash in `users.json`.
 4. Start the main server with `./scripts/run.sh`.
+5. Open `https://<server-ip>:8443/app` for the frontend app.
 
 `server.py` will create `data/` automatically and generate `cert.pem` / `key.pem` if they do not exist.
+
+## Frontend app notes
+
+- The app uses:
+  - `POST /signup` to create a user.
+  - Basic Auth for protected APIs.
+  - `GET /api/files` for JSON file listing.
+- Existing server-rendered UI at `/` remains available.
 
 ## Optional environment variables
 

@@ -1,0 +1,206 @@
+:root {
+  --bg: #f5f3ef;
+  --panel: #fffaf0;
+  --text: #1c1a17;
+  --muted: #5d5449;
+  --line: #d8cfc2;
+  --primary: #006d77;
+  --danger: #9b2226;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 0% 0%, #fdf7e4 0, transparent 40%),
+    radial-gradient(circle at 100% 0%, #e9f5f4 0, transparent 35%),
+    var(--bg);
+}
+
+.shell {
+  max-width: 1000px;
+  margin: 24px auto 48px;
+  padding: 0 16px;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.hero p {
+  margin-top: 8px;
+  color: var(--muted);
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  margin-top: 18px;
+}
+
+.auth-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+h2 {
+  margin: 0 0 8px;
+}
+
+label {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+input,
+button {
+  font: inherit;
+}
+
+input {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fff;
+}
+
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #fff;
+  background: var(--primary);
+  cursor: pointer;
+}
+
+button.delete {
+  background: var(--danger);
+}
+
+.status {
+  min-height: 1.4em;
+  margin: 10px 0 0;
+  color: var(--muted);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.upload-row {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.drop-zone {
+  margin-top: 10px;
+  border: 2px dashed var(--line);
+  border-radius: 12px;
+  padding: 18px;
+  text-align: center;
+  color: var(--muted);
+  background: #fffcf5;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.drop-zone.dragging {
+  border-color: var(--primary);
+  background: #eef9f8;
+  transform: translateY(-1px);
+}
+
+.file-list {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.file-item {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #fff;
+}
+
+.file-meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.file-name {
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.file-size {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.preview {
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #f6f2e9;
+  object-fit: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 0.7rem;
+  flex: 0 0 auto;
+}
+
+.meta-text {
+  min-width: 0;
+}
+
+.file-actions {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 600px) {
+  .file-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .file-meta {
+    width: 100%;
+  }
+}
