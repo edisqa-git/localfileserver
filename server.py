@@ -6,6 +6,7 @@ import json
 import time
 import ipaddress
 import hmac
+import hashlib
 import logging
 import subprocess
 import sqlite3
@@ -233,15 +234,36 @@ def require_auth():
 def ext_allowed(filename: str) -> bool:
     return Path(filename).suffix.lower() in ALLOWED_EXTS
 
-def safe_join_data(filename: str) -> Path:
+def user_storage_key(username: str) -> str:
+    clean = secure_filename((username or "").strip())
+    if clean:
+        return clean
+    return hashlib.sha256((username or "").encode("utf-8")).hexdigest()[:16]
+
+def user_data_dir(username: str) -> Path:
+    base = DATA_DIR.resolve()
+    target = (base / user_storage_key(username)).resolve()
+    if base not in target.parents and target != base:
+        abort(400, description="Invalid user storage path")
+    target.mkdir(parents=True, exist_ok=True)
+    return target
+
+def current_user_data_dir() -> Path:
+    username = authed_username()
+    if not username or username == "-":
+        abort(401, description="Authentication required")
+    return user_data_dir(username)
+
+def safe_join_user_data(data_dir: Path, filename: str) -> Path:
     """
-    Prevent path traversal; only allow within DATA_DIR.
+    Prevent path traversal; only allow within caller's data directory.
     """
+    base = data_dir.resolve()
     cleaned = secure_filename(filename)
     if not cleaned:
         abort(400, description="Invalid filename")
-    target = (DATA_DIR / cleaned).resolve()
-    if DATA_DIR not in target.parents and target != DATA_DIR:
+    target = (base / cleaned).resolve()
+    if base not in target.parents and target != base:
         abort(400, description="Invalid path")
     return target
 
@@ -349,9 +371,9 @@ Max upload size: {{ max_mb }} MB
 </html>
 """
 
-def list_files():
+def list_files_in_dir(data_dir: Path):
     items = []
-    for p in sorted(DATA_DIR.iterdir()):
+    for p in sorted(data_dir.iterdir()):
         if p.is_file():
             ext = p.suffix.lower()
             items.append({
@@ -371,10 +393,11 @@ def index():
     auth_resp = require_auth()
     if auth_resp:
         return auth_resp
+    data_dir = current_user_data_dir()
     return render_template_string(
         HTML,
-        files=list_files(),
-        data_dir=str(DATA_DIR),
+        files=list_files_in_dir(data_dir),
+        data_dir=str(data_dir),
         exts=", ".join(sorted(ALLOWED_EXTS)),
         max_mb=int(MAX_CONTENT_LENGTH / (1024 * 1024))
     )
@@ -386,7 +409,9 @@ def get_file(filename):
         return auth_resp
     if not ext_allowed(filename):
         abort(415, description="File type not allowed")
-    return send_from_directory(str(DATA_DIR), filename, conditional=True)
+    data_dir = current_user_data_dir()
+    target = safe_join_user_data(data_dir, filename)
+    return send_from_directory(str(data_dir), target.name, conditional=True)
 
 @app.route("/download/<path:filename>", methods=["GET"])
 def download(filename):
@@ -395,7 +420,9 @@ def download(filename):
         return auth_resp
     if not ext_allowed(filename):
         abort(415, description="File type not allowed")
-    return send_from_directory(str(DATA_DIR), filename, as_attachment=True)
+    data_dir = current_user_data_dir()
+    target = safe_join_user_data(data_dir, filename)
+    return send_from_directory(str(data_dir), target.name, as_attachment=True)
 
 @app.route("/upload", methods=["POST"])
 def upload():
@@ -413,8 +440,9 @@ def upload():
     if not ext_allowed(f.filename):
         abort(415, description="File type not allowed")
 
+    data_dir = current_user_data_dir()
     filename = secure_filename(f.filename)
-    target = safe_join_data(filename)
+    target = safe_join_user_data(data_dir, filename)
     f.save(str(target))
 
     # Browser UX: go back to list
@@ -431,7 +459,8 @@ def put_file(filename):
     if not ext_allowed(filename):
         abort(415, description="File type not allowed")
 
-    target = safe_join_data(filename)
+    data_dir = current_user_data_dir()
+    target = safe_join_user_data(data_dir, filename)
     atomic_write(target, request.get_data())
 
     if wants_html():
@@ -444,7 +473,8 @@ def delete_file(filename):
     if auth_resp:
         return auth_resp
 
-    target = safe_join_data(filename)
+    data_dir = current_user_data_dir()
+    target = safe_join_user_data(data_dir, filename)
     if not target.exists():
         abort(404, description="Not found")
 
@@ -460,7 +490,8 @@ def delete_ui(filename):
     auth_resp = require_auth()
     if auth_resp:
         return auth_resp
-    target = safe_join_data(filename)
+    data_dir = current_user_data_dir()
+    target = safe_join_user_data(data_dir, filename)
     if target.exists():
         target.unlink()
     return ("", 302, {"Location": "/"})
@@ -482,7 +513,7 @@ def api_files():
     auth_resp = require_auth()
     if auth_resp:
         return auth_resp
-    return jsonify({"files": list_files()}), 200
+    return jsonify({"files": list_files_in_dir(current_user_data_dir())}), 200
 
 @app.route("/signup", methods=["POST"])
 def signup():
