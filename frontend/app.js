@@ -1,8 +1,12 @@
 const state = {
   username: "",
   password: "",
+  role: "",
+  createdAt: "",
   previewUrls: new Map(),
 };
+
+const SESSION_KEY = "lanfileserver.session.v1";
 
 const el = {
   loginForm: document.getElementById("login-form"),
@@ -28,6 +32,37 @@ function authHeader() {
   }
   const token = btoa(`${state.username}:${state.password}`);
   return { Authorization: `Basic ${token}` };
+}
+
+function saveSession() {
+  if (!state.username || !state.password) return;
+  const payload = {
+    username: state.username,
+    password: state.password,
+    role: state.role || "",
+    createdAt: state.createdAt || "",
+  };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+}
+
+function clearSession() {
+  localStorage.removeItem(SESSION_KEY);
+}
+
+function loadSession() {
+  const raw = localStorage.getItem(SESSION_KEY);
+  if (!raw) return false;
+  try {
+    const saved = JSON.parse(raw);
+    state.username = String(saved.username || "").trim();
+    state.password = String(saved.password || "");
+    state.role = String(saved.role || "");
+    state.createdAt = String(saved.createdAt || "");
+    return Boolean(state.username && state.password);
+  } catch (_error) {
+    clearSession();
+    return false;
+  }
 }
 
 function bytesToSize(bytes) {
@@ -222,7 +257,12 @@ el.loginForm.addEventListener("submit", async (event) => {
     if (!resp.ok) {
       throw new Error(`Login failed (${resp.status})`);
     }
-    setStatus(el.authStatus, `Logged in as ${state.username}`);
+    const me = await resp.json();
+    state.role = String(me.role || "");
+    state.createdAt = String(me.created_at || "");
+    saveSession();
+    const roleLabel = state.role ? ` (${state.role})` : "";
+    setStatus(el.authStatus, `Logged in as ${state.username}${roleLabel}`);
     setStatus(el.fileStatus, "Loading files...");
     await fetchFiles();
     setStatus(el.fileStatus, "Files loaded.");
@@ -309,6 +349,9 @@ el.refreshBtn.addEventListener("click", async () => {
 el.logoutBtn.addEventListener("click", () => {
   state.username = "";
   state.password = "";
+  state.role = "";
+  state.createdAt = "";
+  clearSession();
   clearPreviewUrls();
   el.loginForm.reset();
   el.fileList.innerHTML = "";
@@ -337,3 +380,27 @@ el.fileList.addEventListener("click", async (event) => {
     setStatus(el.fileStatus, error.message, true);
   }
 });
+
+(async () => {
+  if (!loadSession()) return;
+  try {
+    const resp = await fetch("/whoami", { headers: authHeader() });
+    if (!resp.ok) throw new Error("Saved session expired");
+    const me = await resp.json();
+    state.role = String(me.role || "");
+    state.createdAt = String(me.created_at || "");
+    saveSession();
+    const roleLabel = state.role ? ` (${state.role})` : "";
+    setStatus(el.authStatus, `Logged in as ${state.username}${roleLabel}`);
+    setStatus(el.fileStatus, "Loading files...");
+    await fetchFiles();
+    setStatus(el.fileStatus, "Files loaded.");
+  } catch (_error) {
+    state.username = "";
+    state.password = "";
+    state.role = "";
+    state.createdAt = "";
+    clearSession();
+    setStatus(el.authStatus, "Please log in.");
+  }
+})();

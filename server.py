@@ -8,6 +8,7 @@ import ipaddress
 import hmac
 import logging
 import subprocess
+import sqlite3
 from datetime import datetime
 from pathlib import Path
 
@@ -24,7 +25,8 @@ from werkzeug.security import check_password_hash, generate_password_hash
 # =========================
 BASE_DIR = Path(__file__).parent.resolve()
 DATA_DIR = (BASE_DIR / "data").resolve()
-USERS_DB = (BASE_DIR / "users.json").resolve()
+USERS_DB = (BASE_DIR / "users.db").resolve()
+LEGACY_USERS_JSON = (BASE_DIR / "users.json").resolve()
 FRONTEND_DIR = (BASE_DIR / "frontend").resolve()
 
 HOST = "0.0.0.0"
@@ -101,28 +103,75 @@ def ensure_tls_cert():
 def client_ip() -> str:
     return request.remote_addr or "-"
 
-# def ip_allowed(ip: str) -> bool:
-#     if not ip or ip == "-":
-#         return False
-#     if ALLOWED_IPS:
-#         return ip in ALLOWED_IPS
-#     if ALLOWED_PREFIXES:
-#         return any(ip.startswith(p) for p in ALLOWED_PREFIXES)
-#     return True
+def db_conn():
+    conn = sqlite3.connect(str(USERS_DB))
+    conn.row_factory = sqlite3.Row
+    return conn
 
-def load_users():
-    if not USERS_DB.exists():
-        return {}
-    with open(USERS_DB, "r", encoding="utf-8") as f:
-        return json.load(f)
+def init_user_db():
+    with db_conn() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                username TEXT PRIMARY KEY,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'user',
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+    migrate_users_from_json()
 
-def save_users(users: dict):
-    payload = json.dumps(users, ensure_ascii=False, indent=2, sort_keys=True).encode("utf-8")
-    atomic_write(USERS_DB, payload)
+def migrate_users_from_json():
+    if not LEGACY_USERS_JSON.exists():
+        return
+    try:
+        with open(LEGACY_USERS_JSON, "r", encoding="utf-8") as f:
+            users = json.load(f)
+    except Exception:
+        return
+    if not isinstance(users, dict):
+        return
+
+    created_at = datetime.utcnow().isoformat() + "Z"
+    with db_conn() as conn:
+        for username, record in users.items():
+            if not isinstance(record, dict):
+                continue
+            clean_username = (username or "").strip()
+            password_hash = (record.get("password_hash") or "").strip()
+            role = (record.get("role") or "user").strip() or "user"
+            if not clean_username or not password_hash:
+                continue
+            conn.execute(
+                """
+                INSERT INTO users (username, password_hash, role, created_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(username) DO NOTHING
+                """,
+                (clean_username, password_hash, role, created_at),
+            )
+
+def get_user(username: str):
+    clean_username = (username or "").strip()
+    if not clean_username:
+        return None
+    with db_conn() as conn:
+        row = conn.execute(
+            "SELECT username, password_hash, role, created_at FROM users WHERE username = ?",
+            (clean_username,),
+        ).fetchone()
+    if not row:
+        return None
+    return {
+        "username": row["username"],
+        "password_hash": row["password_hash"],
+        "role": row["role"],
+        "created_at": row["created_at"],
+    }
 
 def authenticate(username: str, password: str) -> bool:
-    users = load_users()
-    user = users.get(username)
+    user = get_user(username)
     if not user:
         return False
     return check_password_hash(user.get("password_hash", ""), password)
@@ -138,12 +187,15 @@ def create_user(username: str, password: str):
     if not password or len(password) < 8:
         abort(400, description="Password length must be at least 8")
 
-    users = load_users()
-    if clean_username in users:
+    now = datetime.utcnow().isoformat() + "Z"
+    try:
+        with db_conn() as conn:
+            conn.execute(
+                "INSERT INTO users (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)",
+                (clean_username, generate_password_hash(password), "user", now),
+            )
+    except sqlite3.IntegrityError:
         abort(409, description="Username already exists")
-
-    users[clean_username] = {"password_hash": generate_password_hash(password)}
-    save_users(users)
     return clean_username
 
 def check_basic_auth() -> bool:
@@ -155,6 +207,12 @@ def check_basic_auth() -> bool:
 def authed_username() -> str:
     auth = request.authorization
     return (auth.username if auth and auth.username else "-")
+
+def authed_user():
+    auth = request.authorization
+    if not auth or not auth.username:
+        return None
+    return get_user(auth.username)
 
 def require_auth():
     ip = client_ip()
@@ -303,6 +361,8 @@ def list_files():
             })
     return items
 
+init_user_db()
+
 # =========================
 # Routes
 # =========================
@@ -441,7 +501,13 @@ def whoami():
     auth_resp = require_auth()
     if auth_resp:
         return auth_resp
-    return jsonify({"ip": client_ip()}), 200
+    user = authed_user()
+    return jsonify({
+        "ip": client_ip(),
+        "username": user["username"] if user else authed_username(),
+        "role": user["role"] if user else None,
+        "created_at": user["created_at"] if user else None,
+    }), 200
 
 # =========================
 # Main

@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
-import json
-import os
-import time
+import sqlite3
 from getpass import getpass
 from pathlib import Path
 
@@ -11,31 +9,7 @@ from werkzeug.security import generate_password_hash
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-USERS_DB = BASE_DIR / "users.json"
-
-
-def atomic_write(path: Path, payload: bytes) -> None:
-    tmp = path.with_suffix(path.suffix + f".tmp.{os.getpid()}.{int(time.time())}")
-    with open(tmp, "wb") as f:
-        f.write(payload)
-        f.flush()
-        os.fsync(f.fileno())
-    os.replace(tmp, path)
-
-
-def load_users(path: Path) -> dict:
-    if not path.exists():
-        return {}
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    if not isinstance(data, dict):
-        raise SystemExit(f"{path} must contain a JSON object.")
-    return data
-
-
-def save_users(path: Path, users: dict) -> None:
-    payload = json.dumps(users, ensure_ascii=False, indent=2, sort_keys=True).encode("utf-8")
-    atomic_write(path, payload)
+USERS_DB = BASE_DIR / "users.db"
 
 
 def normalize_username(value: str) -> str:
@@ -51,23 +25,54 @@ def normalize_username(value: str) -> str:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Generate a password hash and update users.json directly."
+        description="Generate a password hash and update users.db directly."
     )
     parser.add_argument(
         "-u", "--username",
-        help="Username to create/update in users.json.",
+        help="Username to create/update in users.db.",
     )
     parser.add_argument(
-        "--users-file",
+        "--db-file",
         default=str(USERS_DB),
-        help=f"Path to users database JSON (default: {USERS_DB}).",
+        help=f"Path to sqlite database file (default: {USERS_DB}).",
+    )
+    parser.add_argument(
+        "--role",
+        default="admin",
+        help="Role for newly created users (default: admin). Existing user role is preserved.",
     )
     parser.add_argument(
         "--print-only",
         action="store_true",
-        help="Only print password hash (legacy behavior), do not edit users.json.",
+        help="Only print password hash, do not edit users.db.",
     )
     return parser.parse_args()
+
+
+def upsert_user(db_file: Path, username: str, password_hash: str, role: str) -> None:
+    conn = sqlite3.connect(str(db_file))
+    try:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                username TEXT PRIMARY KEY,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'user',
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO users (username, password_hash, role, created_at)
+            VALUES (?, ?, ?, datetime('now'))
+            ON CONFLICT(username) DO UPDATE SET password_hash = excluded.password_hash
+            """,
+            (username, password_hash, role or "admin"),
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def main() -> None:
@@ -90,18 +95,9 @@ def main() -> None:
 
     username_input = args.username if args.username else input("Username: ")
     username = normalize_username(username_input)
-    users_file = Path(args.users_file).expanduser().resolve()
-    users = load_users(users_file)
-    user_record = users.get(username)
-    if user_record is None:
-        user_record = {}
-    elif not isinstance(user_record, dict):
-        raise SystemExit(f"User record for '{username}' must be an object.")
-
-    user_record["password_hash"] = password_hash
-    users[username] = user_record
-    save_users(users_file, users)
-    print(f"Updated password hash for '{username}' in {users_file}")
+    db_file = Path(args.db_file).expanduser().resolve()
+    upsert_user(db_file, username, password_hash, args.role)
+    print(f"Updated password hash for '{username}' in {db_file}")
 
 
 if __name__ == "__main__":
