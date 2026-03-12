@@ -177,14 +177,17 @@ def authenticate(username: str, password: str) -> bool:
         return False
     return check_password_hash(user.get("password_hash", ""), password)
 
-def create_user(username: str, password: str):
+def create_user(username: str, password: str, role: str = "user"):
     clean_username = (username or "").strip()
+    clean_role = (role or "user").strip().lower() or "user"
     if not clean_username:
         abort(400, description="Username is required")
     if len(clean_username) < 3 or len(clean_username) > 64:
         abort(400, description="Username length must be 3-64")
     if ":" in clean_username:
         abort(400, description="Username cannot contain ':'")
+    if clean_role not in {"user", "admin"}:
+        abort(400, description="Role must be 'user' or 'admin'")
     if not password or len(password) < 8:
         abort(400, description="Password length must be at least 8")
 
@@ -193,7 +196,7 @@ def create_user(username: str, password: str):
         with db_conn() as conn:
             conn.execute(
                 "INSERT INTO users (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)",
-                (clean_username, generate_password_hash(password), "user", now),
+                (clean_username, generate_password_hash(password), clean_role, now),
             )
     except sqlite3.IntegrityError:
         abort(409, description="Username already exists")
@@ -226,6 +229,16 @@ def require_auth():
             401,
             {"WWW-Authenticate": 'Basic realm="LAN-File-Server"'}
         )
+    return None
+
+def require_admin():
+    auth_resp = require_auth()
+    if auth_resp:
+        return auth_resp
+
+    user = authed_user()
+    if not user or user.get("role") != "admin":
+        abort(403, description="Admin access required")
     return None
 
 # =========================
@@ -520,12 +533,22 @@ def signup():
     ip = client_ip()
     if not ip_allowed(ip):
         abort(403, description="Forbidden (IP not allowed)")
+    return jsonify({
+        "error": "Self-service signup is disabled. Only existing users can access this service."
+    }), 403
+
+@app.route("/admin/users", methods=["POST"])
+def admin_create_user():
+    auth_resp = require_admin()
+    if auth_resp:
+        return auth_resp
 
     payload = request.get_json(silent=True) or {}
     username = payload.get("username", "")
     password = payload.get("password", "")
-    created = create_user(username, password)
-    return jsonify({"status": "created", "user": created}), 201
+    role = payload.get("role", "user")
+    created = create_user(username, password, role=role)
+    return jsonify({"status": "created", "user": created, "role": (role or "user").strip().lower() or "user"}), 201
 
 @app.route("/whoami", methods=["GET"])
 def whoami():

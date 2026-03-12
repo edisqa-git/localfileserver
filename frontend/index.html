@@ -12,37 +12,54 @@
   </div>
   <main class="shell">
     <header class="hero">
+      <div class="eyebrow">Private file storage for your network</div>
       <h1>LAN File Server</h1>
-      <p>Securely store and manage files in your own private folder.</p>
+      <p>Store, preview, download, and manage files in a user-scoped workspace.</p>
     </header>
 
     <section class="panel landing" id="landing-panel">
-      <h2>Welcome</h2>
-      <p>Choose an action to continue.</p>
-      <div class="landing-actions">
-        <button id="go-login-btn" type="button">Log In</button>
-        <button id="go-signup-btn" type="button">Sign Up</button>
+      <div class="landing-copy">
+        <h2>Your files stay on your server.</h2>
+        <p>
+          Sign in with an existing account to access your private folder with upload,
+          download, and image preview support.
+        </p>
+        <div class="landing-actions">
+          <button id="go-login-btn" type="button">Sign In</button>
+        </div>
+      </div>
+      <div class="landing-highlights" aria-label="Feature highlights">
+        <div class="highlight-card">
+          <strong>Private by account</strong>
+          <span>Each user gets an isolated file space.</span>
+        </div>
+        <div class="highlight-card">
+          <strong>Fast sharing workflow</strong>
+          <span>Upload from the browser or drag and drop files directly.</span>
+        </div>
+        <div class="highlight-card">
+          <strong>Image previews built in</strong>
+          <span>Inspect supported images before downloading them.</span>
+        </div>
       </div>
     </section>
 
     <section class="panel auth" id="auth-panel" hidden>
+      <div class="auth-header">
+        <div>
+          <h2>Access your workspace</h2>
+          <p>Only existing users can access this service.</p>
+        </div>
+        <button id="back-home-btn" type="button" class="ghost">Back</button>
+      </div>
       <div class="auth-grid">
         <form id="login-form" class="card" autocomplete="off">
-          <h2>Login</h2>
+          <h3>Sign In</h3>
           <label for="login-username">Username</label>
           <input id="login-username" name="username" autocomplete="off" required />
           <label for="login-password">Password</label>
-          <input id="login-password" name="password" type="password" autocomplete="new-password" required />
+          <input id="login-password" name="password" type="password" autocomplete="new-password" required disabled />
           <button type="submit">Sign In</button>
-        </form>
-
-        <form id="signup-form" class="card">
-          <h2>First Time Here? Sign Up</h2>
-          <label for="signup-username">Username</label>
-          <input id="signup-username" name="username" autocomplete="username" required />
-          <label for="signup-password">Password</label>
-          <input id="signup-password" name="password" type="password" autocomplete="new-password" required />
-          <button type="submit">Sign Up</button>
         </form>
       </div>
       <p id="auth-status" class="status"></p>

@@ -12,13 +12,10 @@ const el = {
   authPanel: document.getElementById("auth-panel"),
   appPanel: document.getElementById("app-panel"),
   goLoginBtn: document.getElementById("go-login-btn"),
-  goSignupBtn: document.getElementById("go-signup-btn"),
+  backHomeBtn: document.getElementById("back-home-btn"),
   loginForm: document.getElementById("login-form"),
   loginUsername: document.getElementById("login-username"),
   loginPassword: document.getElementById("login-password"),
-  signupForm: document.getElementById("signup-form"),
-  signupUsername: document.getElementById("signup-username"),
-  signupPassword: document.getElementById("signup-password"),
   uploadForm: document.getElementById("upload-form"),
   uploadFile: document.getElementById("upload-file"),
   dropZone: document.getElementById("drop-zone"),
@@ -34,6 +31,14 @@ function setStatus(target, msg, isError = false) {
   target.style.color = isError ? "#9b2226" : "#5d5449";
 }
 
+function syncPasswordState(usernameInput, passwordInput) {
+  const hasUsername = Boolean(String(usernameInput.value || "").trim());
+  passwordInput.disabled = !hasUsername;
+  if (!hasUsername) {
+    passwordInput.value = "";
+  }
+}
+
 function authHeader() {
   if (!state.username || !state.password) {
     return {};
@@ -47,18 +52,17 @@ function showLandingOnly() {
   el.authPanel.hidden = true;
   el.appPanel.hidden = true;
   el.topActions.hidden = true;
+  setStatus(el.authStatus, "");
 }
 
 function showAuthPanel(mode = "login") {
-  el.landingPanel.hidden = false;
+  el.landingPanel.hidden = true;
   el.authPanel.hidden = false;
   el.appPanel.hidden = true;
   el.topActions.hidden = true;
-  if (mode === "signup") {
-    el.signupUsername.focus();
-  } else {
-    el.loginUsername.focus();
-  }
+  setStatus(el.fileStatus, "");
+  syncPasswordState(el.loginUsername, el.loginPassword);
+  el.loginUsername.focus();
 }
 
 function showAppPanel() {
@@ -75,9 +79,9 @@ function logout(message = "Logged out.") {
   state.createdAt = "";
   clearPreviewUrls();
   el.loginForm.reset();
-  el.signupForm.reset();
   el.uploadForm.reset();
   el.fileList.innerHTML = "";
+  syncPasswordState(el.loginUsername, el.loginPassword);
   setStatus(el.authStatus, message);
   setStatus(el.fileStatus, "");
   showLandingOnly();
@@ -204,19 +208,6 @@ function renderFiles(files) {
   }
 }
 
-async function signup(username, password) {
-  const resp = await fetch("/signup", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
-  });
-  if (!resp.ok) {
-    const msg = await resp.text();
-    throw new Error(`Signup failed (${resp.status}): ${msg}`);
-  }
-  return resp.json();
-}
-
 async function login(username, password) {
   state.username = String(username || "").trim();
   state.password = String(password || "");
@@ -307,29 +298,17 @@ el.loginForm.addEventListener("submit", async (event) => {
   }
 });
 
+el.loginUsername.addEventListener("input", () => {
+  syncPasswordState(el.loginUsername, el.loginPassword);
+});
+
 el.goLoginBtn.addEventListener("click", () => {
   showAuthPanel("login");
   setStatus(el.authStatus, "Enter your username and password to continue.");
 });
 
-el.goSignupBtn.addEventListener("click", () => {
-  showAuthPanel("signup");
-  setStatus(el.authStatus, "Create a new account to start with your own directory.");
-});
-
-el.signupForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const fd = new FormData(el.signupForm);
-  const username = String(fd.get("username") || "").trim();
-  const password = String(fd.get("password") || "");
-
-  try {
-    await signup(username, password);
-    await login(username, password);
-    setStatus(el.fileStatus, `Signup successful. Logged in as ${username}.`);
-  } catch (error) {
-    setStatus(el.authStatus, error.message, true);
-  }
+el.backHomeBtn.addEventListener("click", () => {
+  showLandingOnly();
 });
 
 el.uploadForm.addEventListener("submit", async (event) => {
