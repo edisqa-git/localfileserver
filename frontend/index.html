@@ -15,12 +15,12 @@
 
     <section class="panel auth">
       <div class="auth-grid">
-        <form id="login-form" class="card">
+        <form id="login-form" class="card" autocomplete="off">
           <h2>Login</h2>
           <label for="login-username">Username</label>
-          <input id="login-username" name="username" autocomplete="username" required />
+          <input id="login-username" name="username" autocomplete="off" required />
           <label for="login-password">Password</label>
-          <input id="login-password" name="password" type="password" autocomplete="current-password" required />
+          <input id="login-password" name="password" type="password" autocomplete="new-password" required />
           <button type="submit">Sign In</button>
         </form>
 

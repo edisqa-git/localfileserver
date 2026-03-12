@@ -60,5 +60,5 @@ Then open:
 
 - `users.db` is intentionally ignored so local credentials are not committed.
 - If a legacy `users.json` exists, `server.py` migrates those users into `users.db` automatically.
-- The frontend stores login session data in `localStorage` so login persists after refresh/reopen.
+- The frontend requires manual login (username + password) and does not persist credentials in browser storage.
 - The nested temporary `fileserver/` repo has been removed; the parent repo is now the single source of truth.
