@@ -7,16 +7,25 @@
   <link rel="stylesheet" href="/app/static/app.css" />
 </head>
 <body>
-  <div class="top-actions">
+  <div class="top-actions" id="top-actions" hidden>
     <button id="logout-btn" type="button">Log Out</button>
   </div>
   <main class="shell">
     <header class="hero">
       <h1>LAN File Server</h1>
-      <p>Signup, login, and manage files from one interface.</p>
+      <p>Securely store and manage files in your own private folder.</p>
     </header>
 
-    <section class="panel auth">
+    <section class="panel landing" id="landing-panel">
+      <h2>Welcome</h2>
+      <p>Choose an action to continue.</p>
+      <div class="landing-actions">
+        <button id="go-login-btn" type="button">Log In</button>
+        <button id="go-signup-btn" type="button">Sign Up</button>
+      </div>
+    </section>
+
+    <section class="panel auth" id="auth-panel" hidden>
       <div class="auth-grid">
         <form id="login-form" class="card" autocomplete="off">
           <h2>Login</h2>
@@ -39,7 +48,7 @@
       <p id="auth-status" class="status"></p>
     </section>
 
-    <section class="panel app">
+    <section class="panel app" id="app-panel" hidden>
       <div class="toolbar">
         <h2>Files</h2>
         <div class="actions">

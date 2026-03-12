@@ -44,6 +44,7 @@ Then open:
 
 ## Frontend app notes
 
+- `/app` opens with a landing page that clearly guides users to `Log In` or `Sign Up`.
 - The app uses:
   - `POST /signup` to create a user.
   - Basic Auth for protected APIs.

@@ -7,10 +7,18 @@ const state = {
 };
 
 const el = {
+  topActions: document.getElementById("top-actions"),
+  landingPanel: document.getElementById("landing-panel"),
+  authPanel: document.getElementById("auth-panel"),
+  appPanel: document.getElementById("app-panel"),
+  goLoginBtn: document.getElementById("go-login-btn"),
+  goSignupBtn: document.getElementById("go-signup-btn"),
   loginForm: document.getElementById("login-form"),
   loginUsername: document.getElementById("login-username"),
   loginPassword: document.getElementById("login-password"),
   signupForm: document.getElementById("signup-form"),
+  signupUsername: document.getElementById("signup-username"),
+  signupPassword: document.getElementById("signup-password"),
   uploadForm: document.getElementById("upload-form"),
   uploadFile: document.getElementById("upload-file"),
   dropZone: document.getElementById("drop-zone"),
@@ -34,6 +42,32 @@ function authHeader() {
   return { Authorization: `Basic ${token}` };
 }
 
+function showLandingOnly() {
+  el.landingPanel.hidden = false;
+  el.authPanel.hidden = true;
+  el.appPanel.hidden = true;
+  el.topActions.hidden = true;
+}
+
+function showAuthPanel(mode = "login") {
+  el.landingPanel.hidden = false;
+  el.authPanel.hidden = false;
+  el.appPanel.hidden = true;
+  el.topActions.hidden = true;
+  if (mode === "signup") {
+    el.signupUsername.focus();
+  } else {
+    el.loginUsername.focus();
+  }
+}
+
+function showAppPanel() {
+  el.landingPanel.hidden = true;
+  el.authPanel.hidden = true;
+  el.appPanel.hidden = false;
+  el.topActions.hidden = false;
+}
+
 function logout(message = "Logged out.") {
   state.username = "";
   state.password = "";
@@ -41,13 +75,16 @@ function logout(message = "Logged out.") {
   state.createdAt = "";
   clearPreviewUrls();
   el.loginForm.reset();
+  el.signupForm.reset();
+  el.uploadForm.reset();
   el.fileList.innerHTML = "";
   setStatus(el.authStatus, message);
   setStatus(el.fileStatus, "");
+  showLandingOnly();
 }
 
 function enforceFreshLogin() {
-  logout("Please log in.");
+  logout("");
   if (el.loginUsername) el.loginUsername.value = "";
   if (el.loginPassword) el.loginPassword.value = "";
 }
@@ -200,6 +237,7 @@ async function login(username, password) {
   setStatus(el.authStatus, `Logged in as ${state.username}${roleLabel}`);
   setStatus(el.fileStatus, "Loading files...");
   await fetchFiles();
+  showAppPanel();
   setStatus(el.fileStatus, "Files loaded.");
 }
 
@@ -269,6 +307,16 @@ el.loginForm.addEventListener("submit", async (event) => {
   }
 });
 
+el.goLoginBtn.addEventListener("click", () => {
+  showAuthPanel("login");
+  setStatus(el.authStatus, "Enter your username and password to continue.");
+});
+
+el.goSignupBtn.addEventListener("click", () => {
+  showAuthPanel("signup");
+  setStatus(el.authStatus, "Create a new account to start with your own directory.");
+});
+
 el.signupForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const fd = new FormData(el.signupForm);
@@ -278,7 +326,7 @@ el.signupForm.addEventListener("submit", async (event) => {
   try {
     await signup(username, password);
     await login(username, password);
-    setStatus(el.authStatus, `Signup successful. Logged in as ${username}.`);
+    setStatus(el.fileStatus, `Signup successful. Logged in as ${username}.`);
   } catch (error) {
     setStatus(el.authStatus, error.message, true);
   }

@@ -67,6 +67,22 @@ body {
   margin-right: auto;
 }
 
+.landing {
+  text-align: center;
+}
+
+.landing p {
+  margin-top: 0;
+  color: var(--muted);
+}
+
+.landing-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .auth-grid {
   display: grid;
   gap: 12px;
