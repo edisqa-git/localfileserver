@@ -8,6 +8,8 @@ const state = {
 
 const el = {
   loginForm: document.getElementById("login-form"),
+  loginUsername: document.getElementById("login-username"),
+  loginPassword: document.getElementById("login-password"),
   signupForm: document.getElementById("signup-form"),
   uploadForm: document.getElementById("upload-form"),
   uploadFile: document.getElementById("upload-file"),
@@ -42,6 +44,12 @@ function logout(message = "Logged out.") {
   el.fileList.innerHTML = "";
   setStatus(el.authStatus, message);
   setStatus(el.fileStatus, "");
+}
+
+function enforceFreshLogin() {
+  logout("Please log in.");
+  if (el.loginUsername) el.loginUsername.value = "";
+  if (el.loginPassword) el.loginPassword.value = "";
 }
 
 function bytesToSize(bytes) {
@@ -362,3 +370,15 @@ el.fileList.addEventListener("click", async (event) => {
     setStatus(el.fileStatus, error.message, true);
   }
 });
+
+window.addEventListener("DOMContentLoaded", () => {
+  enforceFreshLogin();
+});
+
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) {
+    enforceFreshLogin();
+  }
+});
+
+enforceFreshLogin();
