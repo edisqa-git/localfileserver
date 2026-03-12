@@ -65,6 +65,19 @@ function loadSession() {
   }
 }
 
+function logout(message = "Logged out.") {
+  state.username = "";
+  state.password = "";
+  state.role = "";
+  state.createdAt = "";
+  clearSession();
+  clearPreviewUrls();
+  el.loginForm.reset();
+  el.fileList.innerHTML = "";
+  setStatus(el.authStatus, message);
+  setStatus(el.fileStatus, "");
+}
+
 function bytesToSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -347,16 +360,7 @@ el.refreshBtn.addEventListener("click", async () => {
 });
 
 el.logoutBtn.addEventListener("click", () => {
-  state.username = "";
-  state.password = "";
-  state.role = "";
-  state.createdAt = "";
-  clearSession();
-  clearPreviewUrls();
-  el.loginForm.reset();
-  el.fileList.innerHTML = "";
-  setStatus(el.authStatus, "Logged out.");
-  setStatus(el.fileStatus, "");
+  logout("Logged out.");
 });
 
 el.fileList.addEventListener("click", async (event) => {
@@ -396,11 +400,6 @@ el.fileList.addEventListener("click", async (event) => {
     await fetchFiles();
     setStatus(el.fileStatus, "Files loaded.");
   } catch (_error) {
-    state.username = "";
-    state.password = "";
-    state.role = "";
-    state.createdAt = "";
-    clearSession();
-    setStatus(el.authStatus, "Please log in.");
+    logout("Please log in.");
   }
 })();
