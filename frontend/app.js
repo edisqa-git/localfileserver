@@ -172,6 +172,29 @@ async function signup(username, password) {
   return resp.json();
 }
 
+async function login(username, password) {
+  state.username = String(username || "").trim();
+  state.password = String(password || "");
+
+  if (!state.username || !state.password) {
+    throw new Error("Username and password are required.");
+  }
+
+  const resp = await fetch("/whoami", { headers: authHeader() });
+  if (!resp.ok) {
+    throw new Error(`Login failed (${resp.status})`);
+  }
+
+  const me = await resp.json();
+  state.role = String(me.role || "");
+  state.createdAt = String(me.created_at || "");
+  const roleLabel = state.role ? ` (${state.role})` : "";
+  setStatus(el.authStatus, `Logged in as ${state.username}${roleLabel}`);
+  setStatus(el.fileStatus, "Loading files...");
+  await fetchFiles();
+  setStatus(el.fileStatus, "Files loaded.");
+}
+
 async function uploadFile(file) {
   const formData = new FormData();
   formData.append("file", file);
@@ -223,27 +246,16 @@ async function downloadFile(name) {
 el.loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const fd = new FormData(el.loginForm);
-  state.username = String(fd.get("username") || "").trim();
-  state.password = String(fd.get("password") || "");
+  const username = String(fd.get("username") || "").trim();
+  const password = String(fd.get("password") || "");
 
-  if (!state.username || !state.password) {
+  if (!username || !password) {
     setStatus(el.authStatus, "Username and password are required.", true);
     return;
   }
 
   try {
-    const resp = await fetch("/whoami", { headers: authHeader() });
-    if (!resp.ok) {
-      throw new Error(`Login failed (${resp.status})`);
-    }
-    const me = await resp.json();
-    state.role = String(me.role || "");
-    state.createdAt = String(me.created_at || "");
-    const roleLabel = state.role ? ` (${state.role})` : "";
-    setStatus(el.authStatus, `Logged in as ${state.username}${roleLabel}`);
-    setStatus(el.fileStatus, "Loading files...");
-    await fetchFiles();
-    setStatus(el.fileStatus, "Files loaded.");
+    await login(username, password);
   } catch (error) {
     setStatus(el.authStatus, error.message, true);
   }
@@ -257,7 +269,8 @@ el.signupForm.addEventListener("submit", async (event) => {
 
   try {
     await signup(username, password);
-    setStatus(el.authStatus, "Signup successful. Use Login with the same credentials.");
+    await login(username, password);
+    setStatus(el.authStatus, `Signup successful. Logged in as ${username}.`);
   } catch (error) {
     setStatus(el.authStatus, error.message, true);
   }
